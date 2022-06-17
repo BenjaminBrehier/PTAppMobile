@@ -1,0 +1,7 @@
+{
+  "name": "PTAppMobile",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
