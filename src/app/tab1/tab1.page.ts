@@ -2209,47 +2209,18 @@ var json = {
 
 declare var require: any;
 var colors: string[] = ['#1069ce', '#f2fd1f', '#54a102', '#2f8590', '#cc35f2', '#ff3451', '#a0abac', '#730689', '#221e8f', '#cc776d', '#340520', '#594ffc'];
-var labels: string[] = []
-
-//Print content of json
-var capteurs = []
-var map = new Map();
-for (var i in json.HUMIDITE) {      //parsing du du json obtenu
-   for (var j in json.HUMIDITE[i]) {
-      var dateAndVal = []
-      dateAndVal.push(json.HUMIDITE[i].date_ajout)
-      var valeur = json.HUMIDITE[i].data_val.split(":")     //On découpe "data_val": "TEMPERATURE_i126:41.7
-      dateAndVal.push(valeur[1].replace(',', '.'))       //On récupère la valeur
-
-      if (map.has(json.HUMIDITE[i].nom_noeud)) {    //Si le nom capteur est déjà dans la map
-         map.set(json.HUMIDITE[i].nom_noeud, map.get(json.HUMIDITE[i].nom_noeud) + "|" + dateAndVal)   //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
-      } else {
-         map.set(json.HUMIDITE[i].nom_noeud, dateAndVal)
-      }
-   }
+const xhttp = new XMLHttpRequest();
+var result = ""
+// Define a callback function
+xhttp.onload = function () {
+   console.log("truc" + this.responseText);
+   result = this.responseText;
 }
 
-//Print content of the map humidite
-for (var [nom, value] of map) {
-   // console.log(nom + " : " + value);      //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
-   var valueSplitted = value.split("|")
-   var dates = []
-   var datas = []
-   for (var i in valueSplitted) {
-      var tab = valueSplitted[i].split(",")
-      var d = tab[0].split(" ")           //On ne conserve pas l'heure'
-      dates.push(d[0])
-      datas.push(parseInt(tab[1]))
-   }
-   capteurs.push({             //Ajout du capteur au graph
-      type: undefined,
-      name: nom,
-      data: datas,
-   })
-}
+xhttp.open("GET", "http://localhost:8888/truc.txt");
+xhttp.send();
 
-labels = dates
-
+var tab
 @Component({
    selector: 'app-home',
    templateUrl: 'tab1.page.html',
@@ -2262,100 +2233,117 @@ export class Tab1Page {
    }
 
    lineChart() {
-      HighCharts.chart('lineChartHumidite', {
-         chart: {
-            type: 'line'
-         },
-         title: {
-            text: 'Humidité'
-         },
-         xAxis: {
-            categories: labels,
-            tickmarkPlacement: 'on'
-         },
-         yAxis: {
-            min: 0,
-            title: {
-               text: 'Humidité (en %)',
-               align: 'high'
-            },
-         },
-         plotOptions: {
-            bar: {
-               dataLabels: {
-                  enabled: true
+      for (var key in json) {
+         console.log(key, json[key]);
+         var labels: string[] = []
+         //Print content of json
+         var capteurs = []
+         var map = new Map();
+         for (var i in json[key]) {      //parsing du du json obtenu
+            for (var j in json[key][i]) {
+               var dateAndVal = []
+               dateAndVal.push(json[key][i].date_ajout)
+               var valeur = json[key][i].data_val.split(":")     //On découpe "data_val": "TEMPERATURE_i126:41.7"
+               dateAndVal.push(valeur[1].replace(',', '.'))       //On récupère la valeur
+
+               if (map.has(json[key][i].nom_noeud)) {    //Si le nom capteur est déjà dans la map
+                  map.set(json[key][i].nom_noeud, map.get(json[key][i].nom_noeud) + "|" + dateAndVal)   //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
+               } else {
+                  map.set(json[key][i].nom_noeud, dateAndVal)
                }
             }
-         },
-         colors: colors,
-         series: capteurs,
-         exporting: {
-            pdfFont: {
-               normal: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Regular.ttf',
-               bold: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Bold.ttf',
-               bolditalic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-BoldItalic.ttf',
-               italic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Italic.ttf'
+         }
 
+         //Print content of the map humidite
+         for (var [nom, value] of map) {
+            // console.log(nom + " : " + value);      //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
+            var valueSplitted = value.split("|")
+            var dates = []
+            var datas = []
+            for (var i in valueSplitted) {
+               var tab = valueSplitted[i].split(",")
+               var d = tab[0].split(" ")           //On ne conserve pas l'heure'
+               dates.push(d[0])
+               datas.push(parseInt(tab[1]))
+            }
+            capteurs.push({             //Ajout du capteur au graph
+               type: undefined,
+               name: nom,
+               data: datas,
+            })
+            console.log(nom)
+            console.log(dates)
+            console.log(datas)
+         }
+
+         labels = dates
+         if (key == 'HUMIDITE') {
+            tab[key] = {
+               min: 0,
+               title: {
+                  text: 'Humidité (en %)',
+                  align: 'high'
+               },
+            }
+         }
+         if (key == 'TEMPERATURE') {
+            tab[key] = {
+               min: 0,
+               title: {
+                  text: 'Temperature (en °C)',
+                  align: 'high'
+               },
+            }
+         }
+         if (key == 'PRESENCE') {
+            tab[key] = {
+               min: 0,
+               title: {
+                  text: 'Presence (en nombre)',
+                  align: 'high'
+               },
+            }
+         }
+         HighCharts.chart('lineChart' + key, {
+            chart: {
+               type: 'line'
             },
-            chartOptions: {
-               plotOptions: {
-                  series: {
-                     dataLabels: {
-                        enabled: true
-                     }
+            title: {
+               text: key
+            },
+            xAxis: {
+               categories: labels,
+            },
+            yAxis: tab[key],
+            plotOptions: {
+               bar: {
+                  dataLabels: {
+                     enabled: true
                   }
                }
             },
-            fallbackToExportServer: false
-         }
-      });
-      HighCharts.chart('lineChartTemperature', {
-         chart: {
-            type: 'line'
-         },
-         title: {
-            text: 'Humidité'
-         },
-         xAxis: {
-            categories: labels,
-            tickmarkPlacement: 'on'
-         },
-         yAxis: {
-            min: 0,
-            title: {
-               text: 'Humidité (en %)',
-               align: 'high'
-            },
-         },
-         plotOptions: {
-            bar: {
-               dataLabels: {
-                  enabled: true
-               }
-            }
-         },
-         colors: colors,
-         series: capteurs,
-         exporting: {
-            pdfFont: {
-               normal: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Regular.ttf',
-               bold: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Bold.ttf',
-               bolditalic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-BoldItalic.ttf',
-               italic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Italic.ttf'
+            colors: colors,
+            series: capteurs,
+            exporting: {
+               pdfFont: {
+                  normal: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Regular.ttf',
+                  bold: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Bold.ttf',
+                  bolditalic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-BoldItalic.ttf',
+                  italic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Italic.ttf'
 
-            },
-            chartOptions: {
-               plotOptions: {
-                  series: {
-                     dataLabels: {
-                        enabled: true
+               },
+               chartOptions: {
+                  plotOptions: {
+                     series: {
+                        dataLabels: {
+                           enabled: true
+                        }
                      }
                   }
-               }
-            },
-            fallbackToExportServer: false
-         }
-      });
+               },
+               fallbackToExportServer: false
+            }
+         });
+      }
    }
-   
 }
