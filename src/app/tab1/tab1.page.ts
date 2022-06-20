@@ -2231,72 +2231,53 @@ export class Tab1Page {
    ionViewDidEnter() {
       this.lineChart();
    }
-
+   
    lineChart() {
+      var tab = []
       for (var key in json) {
          var labels: string[] = []
-         //Print content of json
-         var capteurs = []
-         var map = new Map();
-         for (var i in json[key]) {      //parsing du du json obtenu
-            var dateAndVal = []
-            dateAndVal.push(json[key][i].date_ajout)
-            var valeur = json[key][i].data_val.split(":")     //On découpe "data_val": "TEMPERATURE_i126:41.7"
-            dateAndVal.push(valeur[1].replace(',', '.'))       //On récupère la valeur
-            if (map.has(json[key][i].nom_noeud)) {    //Si le nom capteur est déjà dans la map
-               map.set(json[key][i].nom_noeud, map.get(json[key][i].nom_noeud) + "|" + dateAndVal)   //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
-            } else {
-               map.set(json[key][i].nom_noeud, dateAndVal)
+         var salles = new Map();
+         for (var i in json[key]) {
+            if (!labels.includes(json[key][i].date_ajout)) {
+               labels.push(json[key][i].date_ajout)
             }
-            for (var j in json[key][i]) {
-               // console.log(json[key][i][j]);
-               // var dateAndVal = []
-               // dateAndVal.push(json[key][i].date_ajout)
-               // var valeur = json[key][i].data_val.split(":")     //On découpe "data_val": "TEMPERATURE_i126:41.7"
-               // dateAndVal.push(valeur[1].replace(',', '.'))       //On récupère la valeur
-               // console.log(dateAndVal);
-               // console.log(map.has(json[key][i].nom_noeud));
-               // console.log(json[key][i].nom_noeud);
-               // if (map.has(json[key][i].nom_noeud)) {    //Si le nom capteur est déjà dans la map
-               //    map.set(json[key][i].nom_noeud, map.get(json[key][i].nom_noeud) + "|" + dateAndVal)   //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
-               // } else {
-               //    map.set(json[key][i].nom_noeud, dateAndVal)
-               // }
-               // console.log(json[key][i][j]);
+            if (!salles.has(json[key][i].nom_noeud)) {
+               salles.set(json[key][i].nom_noeud, [])
+            }
+         }
+         labels.sort();
+         for (var [nom, value] of salles) {
+            for (var i in labels) {
+               salles.get(nom).push(null)
             }
          }
 
+         // console.log(salles)
+
+         for (var i in json[key]) {
+            var valeur = json[key][i].data_val.split(":")      //On découpe "data_val": "TEMPERATURE_i126:41,7"
+            valeur[1] = valeur[1].replace(',', '.')
+            salles.get(json[key][i].nom_noeud)[labels.indexOf(json[key][i].date_ajout)] = valeur[1]
+         }
+         //Print content of json
+         var capteurs = []
+         console.log(labels)
+         console.log(salles)
          //Print content of the map humidite
-         var dates = []
-         for (var [nom, value] of map) {
+         for (var [nom, value] of salles) {
             // console.log(key)
             // console.log(nom + " : " + value);      //i126 : 2022-06-13 11:06:12,41.7|2022-06-13 11:06:12,41.7
             var datas = []
-            if (value.length > 2) {    //Si + de 1 valeur pour le capteur
-               var valueSplitted = value.split("|")
-               for (var i in valueSplitted) {
-                  var tab = valueSplitted[i].split(",")
-                  var d = tab[0].split(" ")           //On ne conserve pas l'heure
-                  dates.push(d[0])
-                  datas.push(parseInt(tab[1]))
-               }
+            for (var i in value) {
+               datas.push(parseFloat(value[i]))
             }
-            else {
-               var d = value[0].split(" ")           //On ne conserve pas l'heure
-               dates.push(d[0])
-               datas.push(parseInt(value[1]))
-            }
-            console.log(key + ":" +nom+ ":"+datas);
-            
+
             capteurs.push({             //Ajout du capteur au graph
                type: undefined,
                name: nom,
                data: datas,
             })
          }
-         
-         labels = dates
-         console.log(dates);
          // console.log(key+" : "+labels);
          if (key == 'HUMIDITE') {
             tab[key] = {
@@ -2333,13 +2314,17 @@ export class Tab1Page {
                text: key
             },
             xAxis: {
+               type: "datetime",
                categories: labels,
                labels: {
-                  enabled: false // disable labels
+                  enabled: true // disable labels
                }
             },
             yAxis: tab[key],
             plotOptions: {
+               series: {
+                  connectNulls : true,
+               },
                bar: {
                   dataLabels: {
                      enabled: true
