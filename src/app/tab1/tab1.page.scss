@@ -50,7 +50,7 @@
   
   .temperature,
   .humidite,
-  .luminescence {
+  .presence {
     display: flex;
     flex-direction: row-reverse;
     justify-content: center;
@@ -60,11 +60,11 @@
   
   /* Block conteneur données */
   
-  .LumiHumi {
+  .PresHumi {
     display: flex;
   }
   
-  .luminescence {
+  .presence {
     height: 70px;
     border-bottom: 2px solid #c572a4;
     width: 50%;
@@ -84,7 +84,7 @@
     width: 12%;
   }
   
-  img.LumiImg,
+  img.presImg,
   .humIgm {
     width: 15%;
     margin-right: 10px;
@@ -100,6 +100,12 @@
   
   p.dateText {
     margin-top: 10px;
+    font-weight: bold;
+  }
+
+  #statsHUMIDITE, #statsPRESENCE, #statsTEMPERATURE {
+    text-align: center;
+    font-size: 15px;
     font-weight: bold;
   }
   
