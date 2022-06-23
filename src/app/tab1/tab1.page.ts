@@ -1,15 +1,15 @@
 import { Component } from '@angular/core';
 import * as HighCharts from 'highcharts';
-import { HttpClient } from '@angular/common/http';
 import HC_exporting from "highcharts/modules/exporting";
 import expor from "highcharts/modules/export-data";
 import { format } from 'date-fns';
+import { fr } from 'date-fns/esm/locale'
+
 HC_exporting(HighCharts);
 expor(HighCharts);
 
 declare var require: any;
 var colors: string[] = ['#1069ce', '#f2fd1f', '#54a102', '#2f8590', '#cc35f2', '#ff3451', '#a0abac', '#730689', '#221e8f', '#cc776d', '#340520', '#594ffc'];
-
 
 @Component({
    selector: 'app-home',
@@ -17,30 +17,29 @@ var colors: string[] = ['#1069ce', '#f2fd1f', '#54a102', '#2f8590', '#cc35f2', '
    styleUrls: ['tab1.page.scss'],
 })
 export class Tab1Page {
-   today = format(new Date(), 'dd/MM/yyyy hh:mm:ss');
-   moyTemp = null;
-   moyHum: Number = 0;
-   moyPres: Number = 0;
+   dateLocales = { fr: fr}
+   today = format(new Date(), 'EEEE MM yyyy hh:mm:ss', {locale: this.dateLocales.fr});
 
    ionViewDidEnter() {
       this.lineChart();
    }
 
    lineChart() {
-      //Requete pour récupérer les données de la base (ici du fichier)
-      let result = fetch("http://localhost:8888/truc.txt", {
+      //? Requete pour récupérer les données de la base (ici du fichier)
+      let result = fetch("http://localhost:8888/json.txt", {
          method: "GET",
       }).then(function (response) {
          return response.text()
       }).then(function (text) {
+         //? On transforme le string obtenu en un object JSON
          var json = JSON.parse(text)
-         var tab = []
-         //On boucle sur chaque groupe de données (Humidité, Température, etc...)
+         var legende = []
+         //? On boucle sur chaque groupe de données (Humidité, Température, etc...)
          for (var key in json) {
             if (!(key == 'MOYENNE')) {
                var labels: string[] = []
                var salles = new Map();
-               //On place dans une array toutes les dates et initialise chaque salle dans la map avec un tableau de null de la même taille que labels
+               //? On place dans une array toutes les dates et initialise chaque salle dans la map avec un tableau de la même taille que labels (remplit de null)
                for (var i in json[key]) {
                   if (!labels.includes(json[key][i].date_ajout)) {
                      labels.push(json[key][i].date_ajout)
@@ -50,23 +49,24 @@ export class Tab1Page {
                   }
                }
                labels.sort();
-               //On met à null tous les cases pour chaque date dans la map
+               //? On met à null tous les cases pour chaque date dans la map
                for (var [nom, value] of salles) {
                   for (var i in labels) {
-                     salles.get(nom).push(null)
+                     salles.get(nom).push(null)    //* [null, null, null, null, null, null, …]
                   }
                }
 
-               //On remplit la map avec les données et laisse null si pas de données pour cette date et cette salle
+               //? On remplit la map avec les données et laisse null si pas de données pour cette date et cette salle
                for (var i in json[key]) {
-                  var valeur = json[key][i].data_val.split(":")      //On découpe "data_val": "TEMPERATURE_i126:41,7"
+                  var valeur = json[key][i].data_val.split(":")      //* On découpe data_val = "TEMPERATURE_i126:41,7"
                   valeur[1] = valeur[1].replace(',', '.')
                   salles.get(json[key][i].nom_noeud)[labels.indexOf(json[key][i].date_ajout)] = valeur[1]
                }
 
-               var capteurs = []
+               //? On ajoute les valeurs dans la map et on cherche le min et le max
+               var courbes = []
                var max = 0;
-               var min
+               var min = null
                for (var [nom, value] of salles) {
                   var datas = []
                   for (var i in value) {
@@ -79,30 +79,31 @@ export class Tab1Page {
                      }
                   }
 
-                  //Ajout du capteur au graphe
-                  capteurs.push({
+                  //? Ajout du capteur au graphe
+                  courbes.push({
                      type: undefined,
                      name: nom,
                      data: datas,
                   })
                }
 
-               //On calcule la moyenneHorizontale (Pour chaque date)
+               //? On calcule la moyenneHorizontale (Pour chaque date)
                var moyenneHorizontal = []
                for (var i in labels) {
                   var moy = 0
                   var nbCapt = 0
-                  for (var j in capteurs) {
-                     if (!isNaN(capteurs[j].data[i])) {
+                  for (var j in courbes) {
+                     if (!isNaN(courbes[j].data[i])) {
                         nbCapt++
-                        moy += capteurs[j].data[i]
+                        moy += courbes[j].data[i]
                      }
                   }
                   moy /= nbCapt
                   moyenneHorizontal.push(moy)
                }
 
-               capteurs.push({
+               //? Ajout de la moyenne
+               courbes.push({
                   type: undefined,
                   name: "moyenne",
                   data: moyenneHorizontal,
@@ -112,28 +113,28 @@ export class Tab1Page {
                salles.set("moyenne", moyenneHorizontal)
 
 
-               //Moyenne du graphique
+               //? Calcul de la moyenne du graphique
                var moyenne = 0
                for (var i in moyenneHorizontal) {
                   moyenne += moyenneHorizontal[i]
                }
                moyenne /= moyenneHorizontal.length
 
+               //? Calcul de l'écart-type
                var somme = 0
                var cpt = 0
-               //Calcul de l'écart-type
-               for (var i in capteurs) {
-                  if (!isNaN(capteurs[j].data[i])) {
-                     somme += (capteurs[j].data[i]-moyenne)**2
+               for (var i in courbes) {
+                  if (!isNaN(courbes[j].data[i]) && courbes[j].data[i] != null) {
+                     somme += (courbes[j].data[i] - moyenne) ** 2
                      cpt++
                   }
                }
-               var ecartType = Math.sqrt(somme/cpt)
-               document.getElementById('stats'+key).innerHTML = "Moyenne : " + moyenne.toFixed(2) + "<br>Ecart Type : " +ecartType.toFixed(2) +  "<br>Max : " + max + "<br>Min : " + min;
+               var ecartType = Math.sqrt(somme / cpt)
+               document.getElementById('stats' + key).innerHTML = "Moyenne : " + moyenne.toFixed(2) + "<br>Ecart Type : " + ecartType.toFixed(2) + "<br>Max : " + max + "<br>Min : " + min;
 
-
+               //? Définition de la légende de l'axe des ordonnées
                if (key == 'HUMIDITE') {
-                  tab[key] = {
+                  legende[key] = {
                      min: 0,
                      title: {
                         text: 'Humidité (en %)',
@@ -142,7 +143,7 @@ export class Tab1Page {
                   }
                }
                if (key == 'TEMPERATURE') {
-                  tab[key] = {
+                  legende[key] = {
                      min: 0,
                      title: {
                         text: 'Temperature (en °C)',
@@ -151,18 +152,19 @@ export class Tab1Page {
                   }
                }
                if (key == 'PRESENCE') {
-                  tab[key] = {
+                  legende[key] = {
                      min: 0,
                      title: {
-                        text: 'Presence (en nombre)',
+                        text: 'Presence (en nombre de personnes)',
                         align: 'high'
                      },
                   }
                }
+               //? Création du graphique
                HighCharts.chart('lineChart' + key, {
                   chart: {
                      type: 'line',
-                     backgroundColor: 'transparent'
+                     // backgroundColor: 'transparent'
                   },
                   title: {
                      text: key,
@@ -175,10 +177,10 @@ export class Tab1Page {
                      type: undefined,
                      categories: labels,
                      labels: {
-                        enabled: true // disable labels
+                        enabled: true //* disable labels
                      }
                   },
-                  yAxis: tab[key],
+                  yAxis: legende[key],
                   plotOptions: {
                      series: {
                         connectNulls: true,
@@ -190,7 +192,7 @@ export class Tab1Page {
                      }
                   },
                   colors: colors,
-                  series: capteurs,
+                  series: courbes,
                   exporting: {
                      pdfFont: {
                         normal: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Regular.ttf',
@@ -213,10 +215,10 @@ export class Tab1Page {
                });
             }
             else {
+               //? On récupère les moyennes de temps réelles et on les ajoute
                document.getElementsByClassName('tempText')[0].innerHTML = " " + json[key].TEMPERATURE + " °C"
                document.getElementsByClassName('humtext')[0].innerHTML = " " + json[key].HUMIDITE + " %"
                document.getElementsByClassName('prestext')[0].innerHTML = " " + json[key].PRESENCE + " pers"
-
             }
          }
          return json
