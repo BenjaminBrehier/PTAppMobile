@@ -18,21 +18,21 @@ var colors: string[] = ['#1069ce', '#f2fd1f', '#54a102', '#2f8590', '#cc35f2', '
 })
 export class Tab1Page {
    dateLocales = { fr: fr}
-   today = format(new Date(), 'EEEE MM yyyy hh:mm:ss', {locale: this.dateLocales.fr});
+   today = format(new Date(), 'EEEE dd yyyy hh:mm:ss', {locale: this.dateLocales.fr});
 
    ionViewDidEnter() {
       this.lineChart();
    }
 
    lineChart() {
-      //? Requete pour récupérer les données de la base (ici du fichier)
       let result = fetch("http://localhost:8888/json.txt", {
          method: "GET",
       }).then(function (response) {
          return response.text()
       }).then(function (text) {
-         //? On transforme le string obtenu en un object JSON
+         //? Requete pour récupérer les données de la base (ici du fichier)
          var json = JSON.parse(text)
+         //? On transforme le string obtenu en un object JSON
          var legende = []
          //? On boucle sur chaque groupe de données (Humidité, Température, etc...)
          for (var key in json) {
@@ -55,14 +55,14 @@ export class Tab1Page {
                      salles.get(nom).push(null)    //* [null, null, null, null, null, null, …]
                   }
                }
-
+   
                //? On remplit la map avec les données et laisse null si pas de données pour cette date et cette salle
                for (var i in json[key]) {
                   var valeur = json[key][i].data_val.split(":")      //* On découpe data_val = "TEMPERATURE_i126:41,7"
                   valeur[1] = valeur[1].replace(',', '.')
                   salles.get(json[key][i].nom_noeud)[labels.indexOf(json[key][i].date_ajout)] = valeur[1]
                }
-
+   
                //? On ajoute les valeurs dans la map et on cherche le min et le max
                var courbes = []
                var max = 0;
@@ -78,15 +78,16 @@ export class Tab1Page {
                         min = parseFloat(value[i])
                      }
                   }
-
+   
                   //? Ajout du capteur au graphe
                   courbes.push({
                      type: undefined,
                      name: nom,
                      data: datas,
+                     visible: false,
                   })
                }
-
+   
                //? On calcule la moyenneHorizontale (Pour chaque date)
                var moyenneHorizontal = []
                for (var i in labels) {
@@ -101,25 +102,25 @@ export class Tab1Page {
                   moy /= nbCapt
                   moyenneHorizontal.push(moy)
                }
-
+   
                //? Ajout de la moyenne
                courbes.push({
                   type: undefined,
                   name: "moyenne",
                   data: moyenneHorizontal,
-                  visible: false,
+                  visible: true,
                })
-
+   
                salles.set("moyenne", moyenneHorizontal)
-
-
+   
+   
                //? Calcul de la moyenne du graphique
                var moyenne = 0
                for (var i in moyenneHorizontal) {
                   moyenne += moyenneHorizontal[i]
                }
                moyenne /= moyenneHorizontal.length
-
+   
                //? Calcul de l'écart-type
                var somme = 0
                var cpt = 0
@@ -130,10 +131,11 @@ export class Tab1Page {
                   }
                }
                var ecartType = Math.sqrt(somme / cpt)
-               document.getElementById('stats' + key).innerHTML = "Moyenne : " + moyenne.toFixed(2) + "<br>Ecart Type : " + ecartType.toFixed(2) + "<br>Max : " + max + "<br>Min : " + min;
-
-               //? Définition de la légende de l'axe des ordonnées
+               
+               //? Définition de la légende de l'axe des ordonnées et unitées
+               var unit = []
                if (key == 'HUMIDITE') {
+                  unit[key] = ' %'
                   legende[key] = {
                      min: 0,
                      title: {
@@ -143,6 +145,7 @@ export class Tab1Page {
                   }
                }
                if (key == 'TEMPERATURE') {
+                  unit[key] = ' °C'
                   legende[key] = {
                      min: 0,
                      title: {
@@ -152,6 +155,7 @@ export class Tab1Page {
                   }
                }
                if (key == 'PRESENCE') {
+                  unit[key] = ' pers'
                   legende[key] = {
                      min: 0,
                      title: {
@@ -160,6 +164,9 @@ export class Tab1Page {
                      },
                   }
                }
+               //? Affichage des statistiques
+               document.getElementById('stats' + key).innerHTML = "Moyenne : " + moyenne.toFixed(2) + unit[key] + "<br>Ecart Type : " + ecartType.toFixed(2) + unit[key] + "<br>Max : " + max + unit[key] + "<br>Min : " + min + unit[key];
+               
                //? Création du graphique
                HighCharts.chart('lineChart' + key, {
                   chart: {
@@ -174,11 +181,15 @@ export class Tab1Page {
                      }
                   },
                   xAxis: {
-                     type: undefined,
+                     type: 'datetime',
                      categories: labels,
                      labels: {
                         enabled: true //* disable labels
-                     }
+                     },
+                     minPadding: 0,
+                     maxPadding: 0,
+                     startOnTick: true,
+                     endOnTick: true
                   },
                   yAxis: legende[key],
                   plotOptions: {
@@ -199,7 +210,7 @@ export class Tab1Page {
                         bold: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Bold.ttf',
                         bolditalic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-BoldItalic.ttf',
                         italic: 'https://www.highcharts.com/samples/data/fonts/NotoSans-Italic.ttf'
-
+   
                      },
                      chartOptions: {
                         plotOptions: {
