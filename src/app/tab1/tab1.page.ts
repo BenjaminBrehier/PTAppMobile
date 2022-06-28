@@ -25,12 +25,12 @@ export class Tab1Page {
    }
 
    lineChart() {
-      let result = fetch("http://localhost:8888/json.txt", {
+      //? Requete pour récupérer les données de la base (ici du fichier)
+      let result = fetch("http://localhost:8888/json.txt", {   //! Url à remplacer par celle de l'API (bd1.php) sur le serveur ou fichier contenant les données en JSON
          method: "GET",
       }).then(function (response) {
          return response.text()
       }).then(function (text) {
-         //? Requete pour récupérer les données de la base (ici du fichier)
          var json = JSON.parse(text)
          //? On transforme le string obtenu en un object JSON
          var legende = []
